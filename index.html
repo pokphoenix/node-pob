@@ -1,0 +1,461 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      form { color:#FFF; background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages li { padding: 5px 10px; }
+      #messages li:nth-child(odd) { background: #eee; }
+       table { border:1px solid #000; margin: 0 auto; }
+      #board_user table td{ width: 50px; height: 50px;text-align: center;}
+      #board_enemy table td{ width: 20px; height: 20px;text-align: center;}
+      table td:nth-child(even){ background: #666; }
+      table td:nth-child(odd){ background: #999; }
+    </style>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+  <script>
+    var io_connect =  window.location.hostname+':8080'
+    console.log(io_connect);
+    var socket = io();
+  
+    var id,level,room,board_user,board_enemy,board_user_value,board_enemy_value
+    ,seq,user_hero_id,user_hero_hp,enemy_seq ;
+
+
+    socket.on('find', function(r){
+      console.log('find',r,id);
+        if(r.user_1.user_id==id||r.user_2.user_id==id){
+          room = r.room;
+          
+          socket.emit('subscribe',room);
+          $('#countdown').hide();
+          $("#room").text(room);
+          board_user_value = r.board;
+          board_user = '<table>';
+          for (var i=0 ; i<8;i++){
+            board_user += '<tr>' ;
+            for (var j=0 ; j<8;j++){
+                board_user  +=  '<td>'+r.board[i][j]+'</td>' ;
+            }
+            board_user += '</tr>' ;
+          }
+          board_user += '</table>';
+
+          var myData = (r.user_1.user_id==id) ? r.user_1 : r.user_2 ;
+          var enemyData = (r.user_1.user_id==id) ? r.user_2 : r.user_1 ;
+        
+          user_hero_id = myData.hero_id;
+          user_hero_hp = myData.hero_hp;
+          seq = myData.seq ;
+          // enemy_seq = enemyData.seq ;
+
+          // console.log('my seq : '+seq,'enemy seq : '+enemy_seq);
+          $('#hero_id').text(myData.hero_id);
+          $('#hero_hp').text(myData.hero_hp);
+
+          $('#enemy_id').text(enemyData.hero_id);
+          $('#enemy_hp').text(enemyData.hero_hp);
+          
+          // data = { room:r.room,id:id  };
+          // socket.emit('update_enemy_data',data);
+          $("#board_user").html(board_user);
+          $("#board_enemy").html(board_user);
+          $("#main_play").show();
+          // if(r.user_1.id==id){
+          //     $('#hero_id').text(r.hero_1_id);
+          //     $('#hero_hp').text(r.hero_1_hp);
+          //     $('#enemy_id').text(r.hero_2_id);
+          //     $('#enemy_hp').text(r.hero_2_hp);
+          //     seq = r.user_1_seq;
+          //     board_user_value = r.board_1 ;
+          //     board_enemy_value = r.board_2 ;
+          //     board_user = '<table>';
+          //     for (var i=0 ; i<8;i++){
+          //       board_user += '<tr>' ;
+          //       for (var j=0 ; j<8;j++){
+          //           board_user  +=  '<td>'+r.board_1[i][j]+'</td>' ;
+          //       }
+          //       board_user += '</tr>' ;
+          //     }
+          //     board_user += '</table>';
+
+          //     board_enemy = '<table>';
+          //     for (var i=0 ; i<8;i++){
+          //       board_enemy += '<tr>' ;
+          //       for (var j=0 ; j<8;j++){
+          //           board_enemy  +=  '<td>'+r.board_2[i][j]+'</td>' ;
+          //       }
+          //       board_enemy += '</tr>' ;
+          //     }
+          //     board_enemy += '</table>';
+          // }else if(r.user_2==id){
+          //     $('#hero_id').text(r.hero_2_id);
+          //     $('#hero_hp').text(r.hero_2_hp);
+          //     $('#enemy_id').text(r.hero_1_id);
+          //     $('#enemy_hp').text(r.hero_1_hp);
+          //     seq = r.user_2_seq;
+          //     board_user_value = r.board_2 ;
+          //     board_enemy_value = r.board_1 ;
+          //     board_user = '<table>';
+          //     for (var i=0 ; i<8;i++){
+          //       board_user += '<tr>' ;
+          //       for (var j=0 ; j<8;j++){
+          //           board_user  +=  '<td>'+r.board_2[i][j]+'</td>' ;
+          //       }
+          //       board_user += '</tr>' ;
+          //     }
+          //     board_user += '</table>';
+
+          //     board_enemy = '<table>';
+          //     for (var i=0 ; i<8;i++){
+          //       board_enemy += '<tr>' ;
+          //       for (var j=0 ; j<8;j++){
+          //           board_enemy  +=  '<td>'+r.board_1[i][j]+'</td>' ;
+          //       }
+          //       board_enemy += '</tr>' ;
+          //     }
+          //     board_enemy += '</table>';
+          // }
+
+          
+        }
+
+    });
+    socket.on('sync_action', function(r){
+        if (r.event==3){
+          user_hero_hp -= r.arr[0];
+          $('#hero_hp').text(user_hero_hp);
+        }
+        if (r.event==0){
+            board_enemy = '<table>';
+            for (var i=0 ; i<8;i++){
+              board_enemy += '<tr>' ;
+              for (var j=0 ; j<8;j++){
+                  board_enemy  +=  '<td>'+r.arr[i][j]+'</td>' ;
+              }
+              board_enemy += '</tr>' ;
+            }
+            board_enemy += '</table>';
+            $("#board_enemy").html(board_enemy);
+        } 
+
+        console.log('enemy_seq : '+enemy_seq);
+        console.log('r.seq : '+r.seq);
+
+        if((enemy_seq+1)<r.seq){
+            data = { room: room, action: 1, id:id} ;
+            socket.emit('history',data);
+        }
+
+        enemy_seq = r.seq;
+        if(r.seq>5){
+          enemy_seq = 5;
+        }
+        console.log('ON sync_action',r);
+        console.log('user_seq',seq);
+        console.log('enemy_seq',enemy_seq);
+
+        if (enemy_seq%5==0){   //---  ทุกๆ 5 action delete history
+           del = { room: room,id:id,seq:enemy_seq } ;
+           console.log('delete_history',del);
+           socket.emit('delete_history', del );
+        }
+
+      //   $('#enemy_id').text(r.hero_id);
+      //   $('#enemy_hp').text(r.hero_hp);
+    
+    });
+    // socket.on('update_data', function(r){
+    //     console.log('update_data',r);
+    //     if(r.user_1==id||r.user_2==id){
+    //          if(r.user_1==id){
+    //           $('#hero_id').text(r.hero_1_id);
+    //           $('#hero_hp').text(r.hero_1_hp);
+    //           $('#enemy_id').text(r.hero_2_id);
+    //           $('#enemy_hp').text(r.hero_2_hp);
+    //           if((seq+1)<r.user_1_seq){
+
+    //               data = { room: room, action: 1, id:id} ;
+    //               socket.emit('history',data);
+    //           }
+    //           seq=r.user_1_seq;
+    //           if(seq >=2 ){
+    //             seq = 1;
+    //           }
+    //           board_user_value = r.board_1 ;
+    //           board_enemy_value = r.board_2 ;
+    //           board_user = '<table>';
+    //           for (var i=0 ; i<8;i++){
+    //             board_user += '<tr>' ;
+    //             for (var j=0 ; j<8;j++){
+    //                 board_user  +=  '<td>'+r.board_1[i][j]+'</td>' ;
+    //             }
+    //             board_user += '</tr>' ;
+    //           }
+    //           board_user += '</table>';
+
+    //           board_enemy = '<table>';
+    //           for (var i=0 ; i<8;i++){
+    //             board_enemy += '<tr>' ;
+    //             for (var j=0 ; j<8;j++){
+    //                 board_enemy  +=  '<td>'+r.board_2[i][j]+'</td>' ;
+    //             }
+    //             board_enemy += '</tr>' ;
+    //           }
+    //           board_enemy += '</table>';
+    //       }else if(r.user_2==id){
+    //           $('#hero_id').text(r.hero_2_id);
+    //           $('#hero_hp').text(r.hero_2_hp);
+    //           $('#enemy_id').text(r.hero_1_id);
+    //           $('#enemy_hp').text(r.hero_1_hp);
+    //           if((seq+1)<r.user_2_seq){
+    //               data = { room: room, action: 2, id:id} ;
+    //               socket.emit('history',data);
+    //           }
+    //           seq=r.user_2_seq;
+    //           board_user_value = r.board_2 ;
+    //           board_enemy_value = r.board_1 ;
+    //           board_user = '<table>';
+    //           for (var i=0 ; i<8;i++){
+    //             board_user += '<tr>' ;
+    //             for (var j=0 ; j<8;j++){
+    //                 board_user  += '<td>'+r.board_2[i][j]+'</td>' ;
+    //             }
+    //             board_user += '</tr>' ;
+    //           }
+    //           board_user += '</table>';
+
+    //           board_enemy = '<table>';
+    //           for (var i=0 ; i<8;i++){
+    //             board_enemy += '<tr>' ;
+    //             for (var j=0 ; j<8;j++){
+    //                 board_enemy  +=  '<td>'+r.board_1[i][j]+'</td>' ;
+    //             }
+    //             board_enemy += '</tr>' ;
+    //           }
+    //           board_enemy += '</table>';
+    //       }
+
+          
+    //       $("#board_user").html(board_user);
+    //       $("#board_enemy").html(board_enemy);
+    //     }
+    // });
+    socket.on('end_match', function(r){
+      console.log('end_match',r);
+        if(r.status){
+          
+          $('#main_play').hide();
+          $("#end_match").show();
+          $("#end_match_room").text(room);
+        }
+    });
+   
+    socket.on('time_out', function(r){
+      console.log('time_out');
+        $('#countdown').hide();
+        $('#timeout').show();
+    });
+    socket.on('history', function(r){
+      console.log('history',r);
+    });
+
+
+  // function getQueryVariable(variable) {
+  //   var query = window.location.search.substring(1);
+  //   var vars = query.split("&");
+  //   for (var i=0;i<vars.length;i++) {
+  //     var pair = vars[i].split("=");
+  //     if (pair[0] == variable) {
+  //       return pair[1];
+  //     }
+  //   } 
+  // }
+  // url = window.location.href;
+  // console.log('url',url);
+  // var room = getQueryVariable("room");
+
+  // console.log('url',url,'room',room);
+  // // var room = 83614 ;
+function rand(min,max){
+  return Math.floor((Math.random() * max) + min);
+}
+function shuffle(a) {
+    for (let i = a.length; i; i--) {
+        let j = Math.floor(Math.random() * i);
+        [a[i - 1], a[j]] = [a[j], a[i - 1]];
+    }
+}
+function generateBoard(){
+  var board = [];
+  for (var i=0 ; i<8;i++){
+    var arry =[];
+    for (var j=0 ; j<8;j++){
+      // console.log(i,j);
+      arry.push(rand(1,6));
+    }
+    board.push(arry);
+  }
+  return board;
+}  
+function updateData(action,arr){
+  data = { room: room, action: action,id:id , arr : arr } ;
+  socket.emit('sync_action', data );
+  seq++;
+  if (seq%5==0){   //---  ทุกๆ 5 action save data
+     save = { room: room,id:id,hero_id:user_hero_id ,hero_hp:user_hero_id ,board :board_user_value } ;
+     console.log('save_data',save);
+     socket.emit('save_data', data );
+  }
+}
+
+
+
+    $(function() {
+        $('form#login').submit(function(){
+          id = $('#name').val();
+          level = $('#level').val();
+          data = {
+            id:id
+            ,level:level
+          }
+          
+          //--- กดปุ่มค้นหาส่งค่า id,level
+          socket.emit('search',data);
+          
+
+          // socket.emit('send', { id: id, level: level });
+          $('#countdown').show();
+          $('#login').hide();
+            return false;
+        });
+
+        //---  ระหวางเล่นเกม ส่งค่าอะไรมาก็รับค่านั้นทุกคน แต่ต้องส่ง room มาด้วย
+        $('form#play').submit(function(){
+          socket.emit('update_data', { room: room, message: id+' : '+$('#m').val() });
+          $('#m').val('');
+            return false;
+        });
+
+        //-- ตอนจบเกม ให้เรียก unsubscribe ส่งค่า room มาให้
+        $("#end").click(function(){
+          socket.emit('end_match',room );
+        });  
+        $("#atk").click(function(){
+          atk = rand(0,100);
+        
+          log = '['+id+'] attack '+atk+' dmg.' ;
+          $('#messages').append($('<li>').text(log));
+
+          var enemy_hp = parseInt($('#enemy_hp').text());
+          $('#enemy_hp').text(enemy_hp-atk);
+          console.log('atk');
+          updateData(3,[atk]);
+
+         
+        }); 
+        $("#shuffle").click(function(){
+          console.log('board_user',board_user_value);
+          // board_user_value = shuffle(board_user_value);
+          // var test1  = board_user_value[0][0] ;
+          // var test2  = board_user_value[2][0] ;
+          // board_user_value[0][0] = board_user_value[3][0] ;
+          // board_user_value[2][0] = test2 ;
+          // board_user_value[3][0] = test1 ;
+          board = generateBoard();
+          
+
+          board_user = '<table>';
+          for (var i=0 ; i<8;i++){
+            board_user += '<tr>' ;
+            for (var j=0 ; j<8;j++){
+                board_user  +=  '<td>'+board[i][j]+'</td>' ;
+            }
+            board_user += '</tr>' ;
+          }
+          board_user += '</table>';
+          $("#board_user").html(board_user);
+          console.log('shuffle',board);
+          updateData(0,board);
+          board_user_value = board;
+         
+        });
+        //--- กดปุ่มค้นหาส่งค่า id,level
+        $("#find").click(function(){
+          data = {
+            id:id
+            ,level:level
+          }
+          socket.emit('search',data);
+          $('#timeout').hide();
+          $('#countdown').show();
+            return false;
+        });
+        $("#cancel_search").click(function(){
+          data = {
+            id:id
+          }
+          socket.emit('cancel_search',data);
+          console.log('cancel_search');
+          $('#countdown').hide();
+          $('#login').show();
+            return false;
+        });
+    });
+  
+  
+     
+  </script>
+  </head>
+  <body>
+    <div id="timeout" style="display: none; height:50px; line-height: 50px;" >
+    <h3>หมดเวลาเชื่อมต่อ </h3>
+    <button id="find">find</button>
+  </div>
+  <div id="countdown" style="display: none; height:50px; line-height: 50px;" >
+    <h3>กำลังค้าหา...</h3>
+       <button id="cancel_search">cancel</button>
+  </div>
+  <div id="end_match" style="display: none; height:50px; line-height: 50px;" >
+    <h3>จบการแข่งขัน <span id="end_match_room"></span> </h3>
+  </div>
+
+  <form id="login" action="">
+      name : <input id="name" autocomplete="off" /><BR>
+      level : <input id="level" autocomplete="off" />
+      <button>find</button>
+    </form>
+  
+  <div id="main_play" style="display: none;" >
+  
+   
+    <div id="hero_id" style="position:fixed;top:0; left:10px; ">H0001 </div>
+    <div id="hero_hp" style="position:fixed;top:20px; left:10px; ">8000</div>
+    <div id="enemy_id" style="position:fixed;top:0; right:10px; ">H0002 </div>
+    <div id="enemy_hp" style="position:fixed;top:20px; right:10px;">6000</div>
+    <div style="position: relative; margin-top:40px;"></div>
+    <button id="end">END</button><BR><BR>
+    <button id="atk">Attack</button><BR><BR>
+    <button id="shuffle">Shuffle Board</button><BR><BR>
+    <div style="width:30%;background: #999;">
+      <ul id="messages"></ul>
+    </div>
+    <span id="room"></span>  
+    <div id="board_user" style="position:fixed;top:100px; left:30%;">
+    </div>
+    <div id="board_enemy" style="position:fixed;top:100px; right:10px;">
+    </div>
+      <form id="play" action="">
+        <input id="m" autocomplete="off" /><button>Send</button>
+      </form>
+  </div>
+
+    
+  </body>
+</html>

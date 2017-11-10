@@ -1,0 +1,16 @@
+{
+  "name": "dotamatch",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "author": "pokphoenix",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.15.2",
+    "request": "^2.81.0",
+    "socket.io": "^2.0.3"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}
