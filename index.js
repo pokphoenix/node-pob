@@ -205,8 +205,8 @@ io.on('connection', function (socket) {
 	var userGuid;
 	var myTimeout;
 	var myDisconnect ;
-	console.log('connection');
-	console.log('room',io.sockets.adapter.rooms); //  ดู room ทั้งหมด
+	console.log('[ '+socket.id+' ] connection');
+	// console.log('room',io.sockets.adapter.rooms); //  ดู room ทั้งหมด
 	socket.on('cancel_search', function(data) {  
 		users = removeByKey(users, {
 		  key: 'id',
@@ -243,7 +243,7 @@ io.on('connection', function (socket) {
 	        	// console.log(data.id,'setTimeout ');
         	users = removeByKey(users, {
 				  key: 'id',
-				  value: row.id
+				  value: userGuid
 				});
         	socket.emit('time_out','time out');
         }, 10000);
@@ -279,6 +279,7 @@ io.on('connection', function (socket) {
 								,'item' : b4Users[i].item
 								,'seq' : 0
 								,'board' : board
+								,'loading':0
 							 }
 				var user_2 = { 'user_id': user_data.id
 								,'hero_id': user_data.hero_id
@@ -286,6 +287,7 @@ io.on('connection', function (socket) {
 								,'item' : user_data.item
 								,'seq' : 0
 								,'board' : board
+								,'loading':0
 							 }
 				var matchData = {
 					'room':room
@@ -301,7 +303,7 @@ io.on('connection', function (socket) {
 					,'history_2_arr':[] 
 				}
 				history.push(historyData);	
-			 	console.log( 'matching ['+room+']', matchData );	
+			 	console.log( 'matching ['+room+']',matchData.user_1.user_id+' ('+matchData.user_1.hero_id+') vs '+ matchData.user_2.user_id+' ('+matchData.user_2.hero_id+')');	
 			 	pushData = false;	
 			 	users = removeByKey(users, {
 				  key: 'id',
@@ -327,7 +329,30 @@ io.on('connection', function (socket) {
         socket.emit('chat', 'hello '+data);
         io.in(data.room).emit('message', 'hello '+data);
     });
+    socket.on('sync_loading', function(data) {
+    	if (typeof data==='string'){
+	 		data = JSON.parse(data);
+	 		data.loading = parseInt(data.loading);
+	 	}
+    	var response;
+    	for(var i = 0; i < match.length; i++)
+	    {
+        	if( (match[i].room == data.room) && (match[i].user_1.user_id == data.id) ){ 
+        		match[i].user_1.loading = data.loading ;
+        		response = match[i].user_1 ;
+        	} 
+        	if( (match[i].room == data.room) && (match[i].user_2.user_id == data.id) ){ 
+        		match[i].user_2.loading = data.loading ;
+        		response = match[i].user_2 ;
+        	}
+	    }
+        socket.broadcast.to(data.room).emit('sync_loading', response);
+    });
     socket.on('history', function(data) {
+    	if (typeof data==='string'){
+	 		data = JSON.parse(data);
+	 		data.action = parseInt(data.action);
+	 	}
         for(var i = 0; i < history.length; i++)
         {
         	if( (history[i].room == data.room) && (data.action==1) ){
@@ -342,13 +367,16 @@ io.on('connection', function (socket) {
     });
   
     socket.on('subscribe', function(room) { 
-       //console.log('joining room', room);
+        console.log('joining room', room);
         socket.join(room);
         currentRoomId = room ;
         clearTimeout(myTimeout);
     })
 
     socket.on('save_data', function(data) { 
+    	if (typeof data==='string'){
+	 		data = JSON.parse(data);
+	 	}
         for(var i = 0; i < match.length; i++)
 	    {
         	if( (match[i].room == data.room) && (match[i].user_1.user_id == data.id) ){ 
@@ -366,6 +394,10 @@ io.on('connection', function (socket) {
 	    }
     })
     socket.on('delete_history', function(data) { 
+    	if (typeof data==='string'){
+	 		data = JSON.parse(data);
+	 		data.seq = parseInt(data.seq);
+	 	}
     	var response ;
     	var historyData ;
     	var index;
@@ -396,13 +428,21 @@ io.on('connection', function (socket) {
     })
 
     socket.on('sync_action', function(data) { 
-       console.log('sync_action input', data);
-       var response = {};
+    	
+	 	if (typeof data==='string'){
+	 		console.log('sync_action type of b4', typeof data);
+	 		data = JSON.parse(data);
+	 		data.action = parseInt(data.action);
+	 		console.log('sync_action type of af', typeof data);
+	 	}
+	 	
+        console.log('sync_action input', data);
+        var response = {};
         for(var i = 0; i < match.length; i++)
 	    {
         	if( (match[i].room == data.room) && (match[i].user_1.user_id == data.id) ){ 
         		if(data.action==3){
-        			match[i].user_2.hero_hp -= data.arr[0]  ;
+        			match[i].user_2.hero_hp -= parseInt(data.arr[0])  ;
         		}
         		match[i].user_1.seq++ ;
         		var historyData = clone(data) ;
@@ -417,7 +457,7 @@ io.on('connection', function (socket) {
         	} 
         	if( (match[i].room == data.room) && (match[i].user_2.user_id == data.id) ){ 
         		if(data.action==3){
-        			match[i].user_1.hero_hp -= data.arr[0]  ;
+        			match[i].user_1.hero_hp -= parseInt(data.arr[0])  ;
         		}
         		match[i].user_2.seq++ ;
         		var historyData = clone(data) ;

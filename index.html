@@ -25,15 +25,33 @@
     var socket = io();
   
     var id,level,room,board_user,board_enemy,board_user_value,board_enemy_value
-    ,seq,user_hero_id,user_hero_hp,enemy_seq ;
+    ,seq,user_hero_id,user_hero_hp,enemy_seq , myData ,enemyData ;
 
+    var handle_loading ;
+
+    function sync_loading(){
+        if(enemyData.loading>=100&&myData.loading>=100){ 
+            clearInterval(handle_loading);
+            $("#loading_match").hide();
+            $("#main_play").show();
+        }else{
+            $("#loading_1").text(enemyData.loading+'%');
+            $("#loading_2").text(myData.loading+'%');
+        }
+    }
+
+    socket.on('sync_loading', function(r){
+        enemyData.loading = r.loading ;
+        sync_loading();
+    })
 
     socket.on('find', function(r){
       console.log('find',r,id);
         if(r.user_1.user_id==id||r.user_2.user_id==id){
           room = r.room;
-          
+         
           socket.emit('subscribe',room);
+         
           $('#countdown').hide();
           $("#room").text(room);
           board_user_value = r.board;
@@ -47,9 +65,16 @@
           }
           board_user += '</table>';
 
-          var myData = (r.user_1.user_id==id) ? r.user_1 : r.user_2 ;
-          var enemyData = (r.user_1.user_id==id) ? r.user_2 : r.user_1 ;
-        
+          myData = (r.user_1.user_id==id) ? r.user_1 : r.user_2 ;
+          enemyData = (r.user_1.user_id==id) ? r.user_2 : r.user_1 ;
+
+          handle_loading = setInterval(function(){
+              myData.loading = rand(myData.loading, myData.loading+20  ) ;
+              data = { room: room , id:id , loading: myData.loading } ;
+              socket.emit('sync_loading',data);
+              sync_loading();
+          }, 1000);
+
           user_hero_id = myData.hero_id;
           user_hero_hp = myData.hero_hp;
           seq = myData.seq ;
@@ -66,7 +91,7 @@
           // socket.emit('update_enemy_data',data);
           $("#board_user").html(board_user);
           $("#board_enemy").html(board_user);
-          $("#main_play").show();
+          $("#loading_match").show();
           // if(r.user_1.id==id){
           //     $('#hero_id').text(r.hero_1_id);
           //     $('#hero_hp').text(r.hero_1_hp);
@@ -451,11 +476,21 @@ function updateData(action,arr){
     </div>
     <div id="board_enemy" style="position:fixed;top:100px; right:10px;">
     </div>
+
+
+      
+
       <form id="play" action="">
         <input id="m" autocomplete="off" /><button>Send</button>
       </form>
-  </div>
 
+
+  </div>
+  <div id="loading_match" style="display: none;">
+      enemy loading...<div id="loading_1" ></div>
+      <BR>
+      you loading...<div id="loading_2" ></div>
+  </div>
     
   </body>
 </html>
